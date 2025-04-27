@@ -33,6 +33,7 @@ class SessionMiddleware:
         backend_type: Optional[BackendType] = None,
         backend_client: Optional[Any] = None,
         custom_session_backend: Optional[ISessionBackend] = None,
+        redis_prefix: Optional[str] = None,
     ) -> None:
         """ Session Middleware
 
@@ -67,6 +68,7 @@ class SessionMiddleware:
         self.domain = domain
 
         self._cookie_session_id_field = "_cssid"
+        self.redis_prefix = redis_prefix
 
         self.security_flags = f"httponly; samesite={same_site}"
         if https_only:  # Secure flag can be used with HTTPS only
@@ -101,8 +103,8 @@ class SessionMiddleware:
 
         async def send_wrapper(message: Message, **kwargs) -> None:
             if message["type"] == "http.response.start":
-
-                session_key = scope.pop("__session_key", str(uuid4()))
+                default_session_key = f"{self.redis_prefix}{uuid4()}" if self.redis_prefix else str(uuid4())
+                session_key = scope.pop("__session_key", default_session_key)
 
                 if scope["session"]:
 
